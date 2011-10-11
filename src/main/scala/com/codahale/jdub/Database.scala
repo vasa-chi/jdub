@@ -103,11 +103,12 @@ class Database protected(source: DataSource, pool: GenericObjectPool, name: Stri
   /**
    * Returns {@code true} if we can talk to the database.
    */
-  def ping() = apply(PingQuery)
-
+  def ping() = query(PingQuery)
+  
   /**
    * Performs a query and returns the results.
    */
+  @deprecated(message = "Use query instead", since = "12 October 2011")
   def apply[A](query: RawQuery[A]): A = {
     val connection = poolWait.time {
       source.getConnection
