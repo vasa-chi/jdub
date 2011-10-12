@@ -38,7 +38,7 @@ class Transaction(connection: Connection) extends Logging {
   /**
    * Executes an update, insert, delete, or DDL statement.
    */
-  def execute(statement: Statement) = {
+  def execute(statement: BasicStatement) = {
     statement.timer.time {
       if (log.isDebugEnabled) {
         log.debug("%s with %s", statement.sql, statement.values.mkString("(", ", ", ")"))
@@ -56,17 +56,17 @@ class Transaction(connection: Connection) extends Logging {
   /**
    * Executes an update statement.
    */
-  def update(statement: Statement) = execute(statement)
+  def update(statement: BasicStatement) = execute(statement)
 
   /**
    * Executes an insert statement.
    */
-  def insert(statement: Statement) = execute(statement)
+  def insert(statement: BasicStatement) = execute(statement)
 
   /**
    * Executes a delete statement.
    */
-  def delete(statement: Statement) = execute(statement)
+  def delete(statement: BasicStatement) = execute(statement)
 
   /**
    * Roll back the transaction.

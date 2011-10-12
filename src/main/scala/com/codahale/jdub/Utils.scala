@@ -19,4 +19,13 @@ object Utils {
       prepare(stmt, values.tail, index + 1)
     }
   }
+
+  @tailrec
+  private[jdub] def prepareBatch(stmt: PreparedStatement, values: Seq[Seq[Any]]) {
+    if (!values.isEmpty) {
+      prepare(stmt, values.head)
+      stmt.addBatch()
+      prepareBatch(stmt, values.tail)
+    }
+  }
 }

@@ -12,7 +12,9 @@ class DatabaseSpec extends Spec {
   class `A database` {
     val db = Database.connect("jdbc:hsqldb:mem:DbTest" + i.incrementAndGet(), "sa", "")
     db.execute(SQL("DROP TABLE people IF EXISTS"))
+    db.execute(SQL("drop table people_names if exists"))
     db.execute(SQL("CREATE TABLE people (name varchar(100) primary key, email varchar(100), age int)"))
+    db.execute(SQL("create table people_names (name_id int primary key, name_val varchar(1000))"))
     db.execute(SQL("INSERT INTO people VALUES (?, ?, ?)", Seq("Coda Hale", "chale@yammer-inc.com", 29)))
     db.execute(SQL("INSERT INTO people VALUES (?, ?, ?)", Seq("Kris Gale", "kgale@yammer-inc.com", 30)))
     db.execute(SQL("INSERT INTO people VALUES (?, ?, ?)", Seq("Old Guy", null, 402)))
@@ -33,20 +35,28 @@ class DatabaseSpec extends Spec {
       db(AgeQuery("Captain Fuzzypants McFrankface")).must(be(None))
     }
 
+    @Test def `executes batch insert` = {
+      evaluating {
+        db.execute(NamesQuery)
+      }.must(not(throwAn[Throwable]))
+    }
+
     class `transaction` {
       @Test def `commits by default` = {
-        db.transaction { txn =>
-          txn.execute(SQL("INSERT INTO people VALUES (?, ?, ?)", Seq("New Guy", null, 5)))
+        db.transaction {
+          txn =>
+            txn.execute(SQL("INSERT INTO people VALUES (?, ?, ?)", Seq("New Guy", null, 5)))
         }
 
         db(AgesQuery()).must(be(Set(29, 30, 402, 5)))
       }
 
       @Test def `can rollback` = {
-        db.transaction { txn =>
-          txn.execute(SQL("INSERT INTO people VALUES (?, ?, ?)", Seq("New Guy", null, 5)))
+        db.transaction {
+          txn =>
+            txn.execute(SQL("INSERT INTO people VALUES (?, ?, ?)", Seq("New Guy", null, 5)))
 
-          txn.rollback()
+            txn.rollback()
         }
 
         db(AgesQuery()).must(be(Set(29, 30, 402)))
@@ -54,26 +64,31 @@ class DatabaseSpec extends Spec {
 
       @Test def `rolls back the transaction if an exception is thrown` = {
         evaluating {
-          db.transaction {txn =>
-            txn.execute(SQL("INSERT INTO people VALUES (?, ?, ?)", Seq("New Guy", null, 5)))
+          db.transaction {
+            txn =>
+              txn.execute(SQL("INSERT INTO people VALUES (?, ?, ?)", Seq("New Guy", null, 5)))
 
-            throw new IllegalArgumentException("OH NOES")
+              throw new IllegalArgumentException("OH NOES")
           }
         }.must(throwAn[IllegalArgumentException])
 
         db(AgesQuery()).must(be(Set(29, 30, 402)))
       }
+
+
     }
+
   }
+
 }
 
-case class SQL(sql: String, values: Seq[Any] = Nil) extends Statement
+case class SQL(sql: String, values: Seq[Any] = Nil) extends BasicStatement
 
 case class AgesQuery() extends FlatCollectionQuery[Set, Int] {
   val sql = "SELECT age FROM people"
 
   val values = Nil
-  
+
   def flatMap(row: Row) = row.int(0)
 }
 
@@ -91,4 +106,12 @@ case class EmailQuery() extends CollectionQuery[Vector, Option[String]] {
   val values = Nil
 
   def map(row: Row) = row.string("email")
+}
+
+case object NamesQuery extends BatchStatement {
+
+  val sql = "insert into people_names(name_id, name_val) values (?, ?)"
+
+  val values = for (i <- 1 to 1000) yield Seq(i, i.toString)
+
 }

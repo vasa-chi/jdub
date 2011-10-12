@@ -1,11 +1,11 @@
 package com.codahale.jdub
 
-import com.yammer.metrics.Instrumented
+/**
+ * Created by IntelliJ IDEA.
+ * User: vasa
+ * Date: 12.10.11
+ * Time: 11:56
+ */
+trait Statement extends BasicStatement {
 
-trait Statement extends SqlBase with Instrumented {
-  private[jdub] val timer = metrics.timer("execute")
-
-  def sql: String
-
-  def values: Seq[Any]
 }

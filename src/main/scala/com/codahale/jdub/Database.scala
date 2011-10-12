@@ -60,9 +60,15 @@ object Database {
 class Database protected(source: DataSource, pool: GenericObjectPool, name: String)
   extends Logging with Instrumented {
 
-  metrics.gauge("active-connections", name) { pool.getNumActive }
-  metrics.gauge("idle-connections", name)   { pool.getNumIdle }
-  metrics.gauge("total-connections", name)  { pool.getNumIdle + pool.getNumActive }
+  metrics.gauge("active-connections", name) {
+    pool.getNumActive
+  }
+  metrics.gauge("idle-connections", name) {
+    pool.getNumIdle
+  }
+  metrics.gauge("total-connections", name) {
+    pool.getNumIdle + pool.getNumActive
+  }
   private val poolWait = metrics.timer("pool-wait")
 
   import Utils._
@@ -72,7 +78,9 @@ class Database protected(source: DataSource, pool: GenericObjectPool, name: Stri
    * an exception, the transaction is rolled back.
    */
   def transaction[A](f: Transaction => A): A = {
-    val connection = poolWait.time { source.getConnection }
+    val connection = poolWait.time {
+      source.getConnection
+    }
     connection.setAutoCommit(false)
     val txn = new Transaction(connection)
     try {
@@ -95,13 +103,16 @@ class Database protected(source: DataSource, pool: GenericObjectPool, name: Stri
   /**
    * Returns {@code true} if we can talk to the database.
    */
-  def ping() = apply(PingQuery)
-
+  def ping() = query(PingQuery)
+  
   /**
    * Performs a query and returns the results.
    */
+  @deprecated(message = "Use query instead", since = "12 October 2011")
   def apply[A](query: RawQuery[A]): A = {
-    val connection = poolWait.time { source.getConnection }
+    val connection = poolWait.time {
+      source.getConnection
+    }
     query.timer.time {
       try {
         if (log.isDebugEnabled) {
@@ -133,8 +144,10 @@ class Database protected(source: DataSource, pool: GenericObjectPool, name: Stri
   /**
    * Executes an update, insert, delete, or DDL statement.
    */
-  def execute(statement: Statement) = {
-    val connection = poolWait.time { source.getConnection }
+  def execute(statement: BasicStatement) = {
+    val connection = poolWait.time {
+      source.getConnection
+    }
     statement.timer.time {
       try {
         if (log.isDebugEnabled) {
@@ -142,8 +155,13 @@ class Database protected(source: DataSource, pool: GenericObjectPool, name: Stri
         }
         val stmt = connection.prepareStatement(prependComment(statement, statement.sql))
         try {
-          prepare(stmt, statement.values)
-          stmt.executeUpdate()
+          if (statement.isInstanceOf[BatchStatement]) {
+            prepareBatch(stmt, statement.asInstanceOf[BatchStatement].values)
+            stmt.executeBatch()
+          } else {
+            prepare(stmt, statement.values)
+            stmt.executeUpdate()
+          }
         } finally {
           stmt.close()
         }
@@ -156,17 +174,17 @@ class Database protected(source: DataSource, pool: GenericObjectPool, name: Stri
   /**
    * Executes an update statement.
    */
-  def update(statement: Statement) = execute(statement)
+  def update(statement: BasicStatement) = execute(statement)
 
   /**
    * Executes an insert statement.
    */
-  def insert(statement: Statement) = execute(statement)
+  def insert(statement: BasicStatement) = execute(statement)
 
   /**
    * Executes a delete statement.
    */
-  def delete(statement: Statement) = execute(statement)
+  def delete(statement: BasicStatement) = execute(statement)
 
   /**
    * Closes all connections to the database.
