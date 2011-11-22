@@ -61,8 +61,6 @@ class Transaction(connection: Connection) extends Logging {
         case e =>
           rollback()
           throw e
-      } finally {
-        close()
       }
     }
   }
