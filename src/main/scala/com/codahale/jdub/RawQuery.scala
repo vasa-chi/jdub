@@ -12,5 +12,5 @@ trait RawQuery[A] extends SqlBase with Instrumented {
 
   def handle(results: ResultSet): A
 
-  def apply(db: Database): A = db(this)
+  def apply(db: Database): A = db.query(this)
 }

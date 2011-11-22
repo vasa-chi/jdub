@@ -51,14 +51,13 @@ object Database {
     new Database(new PoolingDataSource(pool), pool, name)
   }
 
-
 }
 
 /**
  * A set of pooled connections to a database.
  */
 class Database protected(source: DataSource, pool: GenericObjectPool, name: String)
-  extends Logging with Instrumented {
+    extends Logging with Instrumented {
 
   metrics.gauge("active-connections", name) {
     pool.getNumActive
@@ -81,22 +80,18 @@ class Database protected(source: DataSource, pool: GenericObjectPool, name: Stri
     val connection = poolWait.time {
       source.getConnection
     }
-    connection.setAutoCommit(false)
     val txn = new Transaction(connection)
     try {
       log.debug("Starting transaction")
       val result = f(txn)
       log.debug("Committing transaction")
-      connection.commit()
       result
     } catch {
-      case e => {
+      case e =>
         log.error(e, "Exception thrown in transaction scope; aborting transaction")
-        connection.rollback()
         throw e
-      }
     } finally {
-      connection.close()
+      txn.close()
     }
   }
 
@@ -104,7 +99,7 @@ class Database protected(source: DataSource, pool: GenericObjectPool, name: Stri
    * Returns {@code true} if we can talk to the database.
    */
   def ping() = query(PingQuery)
-  
+
   /**
    * Performs a query and returns the results.
    */
@@ -157,7 +152,17 @@ class Database protected(source: DataSource, pool: GenericObjectPool, name: Stri
         try {
           if (statement.isInstanceOf[BatchStatement]) {
             prepareBatch(stmt, statement.asInstanceOf[BatchStatement].values)
-            stmt.executeBatch()
+            try {
+              connection.setAutoCommit(false)
+              stmt.executeBatch()
+              connection.commit()
+            } catch {
+              case e =>
+                connection.rollback()
+                throw e
+            } finally {
+              connection.setAutoCommit(true)
+            }
           } else {
             prepare(stmt, statement.values)
             stmt.executeUpdate()

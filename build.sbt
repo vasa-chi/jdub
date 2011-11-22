@@ -1,6 +1,6 @@
 name := "jdub-miit"
 
-version := "1.0"
+version := "0.2"
 
 organization := "ru.miit"
 
@@ -14,4 +14,11 @@ libraryDependencies ++= Seq(
     "org.apache.tomcat" % "dbcp" % "6.0.33",
     "com.codahale" %% "simplespec" % "0.5.1" % "test",
     "org.hsqldb" % "hsqldb" % "2.2.4" % "test"
+)
+
+scalacOptions ++= Seq(
+    "-deprecation",
+    "-unchecked",
+    "-optimise",
+    "-explaintypes"
 )
