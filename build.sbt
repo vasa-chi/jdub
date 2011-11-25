@@ -1,6 +1,6 @@
 name := "jdub-miit"
 
-version := "0.2"
+version := "0.2.1"
 
 organization := "ru.miit"
 

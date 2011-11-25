@@ -5,9 +5,9 @@ package com.codahale.jdub
  * query ({@code SELECT 1}) which doesn't touch any tables or anything.
  */
 object PingQuery extends Query[Boolean] {
-  val sql = "SELECT 1"
+  val sql = "SELECT 1 FROM DUAL"
 
   val values = Nil
 
-  def reduce(rows: Iterator[Row]) = rows.exists { _.int(0) == Some(1) }
+  def reduce(rows: Iterator[Row]) = rows.exists {_.int(0) == Some(1)}
 }
